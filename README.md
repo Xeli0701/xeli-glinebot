@@ -1,3 +1,6 @@
+# 事前説明
+これはXeliによってForkされたLineChatBotです。
+
 # 前提
 - [Heroku](https://jp.heroku.com/) のアカウントを取得済みであること。
 - Herokuの[CLIツール](https://devcenter.heroku.com/articles/getting-started-with-ruby#set-up)がインストール済みであること。
