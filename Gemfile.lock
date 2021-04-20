@@ -106,7 +106,7 @@ GEM
     nokogiri (1.10.8)
       mini_portile2 (~> 2.4.0)
     pg (0.21.0)
-    puma (4.3.5)
+    puma (4.3.7)
       nio4r (~> 2.0)
     rack (2.2.3)
     rack-protection (2.0.8.1)
@@ -201,7 +201,7 @@ DEPENDENCIES
   line-bot-api
   listen
   pg (~> 0.18)
-  puma
+  puma (~> 4.3.6)
   rails (~> 6.0.2)
   rails_12factor
   sass-rails
