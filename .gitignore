@@ -20,3 +20,6 @@
 
 # Ignore ruby-version
 /.ruby-version
+
+# Ignore env(Line Secret Key)
+/.env
