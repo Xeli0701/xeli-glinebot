@@ -39,10 +39,11 @@ class WebhookController < ApplicationController
         when Line::Bot::Event::MessageType::Sticker
           message = {
             type: 'text',
-            text: 'HelloWorld!' + rand(10).to_s
+            text: 'HelloWorld!'
           }
-          p 'test_push Message'
-          client.push_message(User.get_cache[0], message) #テストとして一番最初のユーザにpushする
+          test_user_id = User.get_cache[0] #テストとして一番最初のユーザにpushする
+          p 'Push Message to ' + test_user_id.to_s
+          client.push_message(test_user_id, message)
         end
       
       when Line::Bot::Event::Follow
