@@ -41,20 +41,17 @@ class WebhookController < ApplicationController
             type: 'text',
             text: 'HelloWorld!'
           }
-          test_user_id = User.get_cache[0] #テストとして一番最初のユーザにpushする
-          p 'Push Message to ' + test_user_id.to_s
+          test_user_id = User.get_cache.first #テストとして一番最初のユーザにpushする
           client.push_message(test_user_id, message)
         end
       
       when Line::Bot::Event::Follow
         user_id = event['source']['userId']
         User.set_cache(user_id)
-        p User.get_cache
 
       when Line::Bot::Event::Unfollow
         user_id = event['source']['userId']
         User.delete_cache(user_id)
-        p User.get_cache
       end
     }
     head :ok
