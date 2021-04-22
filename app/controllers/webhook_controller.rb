@@ -30,10 +30,19 @@ class WebhookController < ApplicationController
             text: event.message['text']
           }
           client.reply_message(event['replyToken'], message)
+        
         when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
           response = client.get_message_content(event.message['id'])
           tf = Tempfile.open("content")
           tf.write(response.body)
+        
+        when Line::Bot::Event::MessageType::Sticker
+          message = {
+            type: 'text',
+            text: 'HelloWorld!' + rand(10).to_s
+          }
+          p 'test_push Message'
+          client.push_message(User.get_cache[0], message) #テストとして一番最初のユーザにpushする
         end
       
       when Line::Bot::Event::Follow
