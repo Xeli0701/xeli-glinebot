@@ -41,7 +41,7 @@ class WebhookController < ApplicationController
             type: 'text',
             text: 'HelloWorld!'
           }
-          test_user_id = User.get_cache.first #テストとして一番最初のユーザにpushする
+          test_user_id = User.get_cache.first # テストとして一番最初のユーザにpushする
           client.push_message(test_user_id, message)
         end
       
