@@ -40,6 +40,11 @@ class WebhookController < ApplicationController
         user_id = event['source']['userId']
         User.set_cache(user_id)
         p User.get_cache
+
+      when Line::Bot::Event::Unfollow
+        user_id = event['source']['userId']
+        User.delete_cache(user_id)
+        p User.get_cache
       end
     }
     head :ok
