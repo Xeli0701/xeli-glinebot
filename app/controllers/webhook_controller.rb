@@ -30,6 +30,7 @@ class WebhookController < ApplicationController
       when Line::Bot::Event::Message
         case event.type
         when Line::Bot::Event::MessageType::Text
+          # ToDo:保存したい時には保存コマンド・呼び出したい時に呼出コマンドを作りたいかも
           message = {
             type: 'text',
             text: event.message['text']
@@ -42,17 +43,12 @@ class WebhookController < ApplicationController
           jsonbox_save_message(user_id,message);
         
         when Line::Bot::Event::MessageType::Sticker
-          # JsonBoxから取得し、返すテスト
-          # JsonBoxからメッセージ一覧を取得し、最初のメッセージを取り出す
-          message_list = jsonbox_load_message
-          decrypted_message = decrypt(Base64.decode64(message_list.first["message"]).chomp).force_encoding(Encoding::UTF_8)
+          # JsonBoxからランダムなメッセージをスタンプを送ったユーザにpushする
           message = {
             type: 'text',
-            text: decrypted_message
+            text: random_message_select
           }
-          test_user_id = User.get_cache.first # テストとして一番最初のユーザにpushする
-          client.push_message(test_user_id, message)
-          logger.debug "Pushed message [#{message}] to #{test_user_id}"
+          client.reply_message(event['replyToken'], message)
         end
       
       when Line::Bot::Event::Follow
@@ -71,6 +67,20 @@ class WebhookController < ApplicationController
 
   private
 
+  # Message送信関連
+  def random_message_select
+    message_list = jsonbox_load_message
+    decrypt(base64_decode(message_list.sample["message"]))
+  end
+
+  def base64_encode(data)
+    Base64.encode64(data).chomp
+  end
+
+  def base64_decode(data)
+    Base64.decode64(data).chomp
+  end
+
   # JsonBox
   DEFAULT_LIKE_NUM = 0
 
@@ -78,7 +88,7 @@ class WebhookController < ApplicationController
     uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    params = { user_id: Base64.encode64(encrypt(user_id)).chomp, message: Base64.encode64(encrypt(message)).chomp, like: DEFAULT_LIKE_NUM }
+    params = { user_id: base64_encode(encrypt(user_id)), message: base64_encode(encrypt(message)), like: DEFAULT_LIKE_NUM }
     headers = { "Content-Type" => "application/json" }
     http.post(uri.path, params.to_json, headers)
     logger.info(" [JSONBOX]:Posted Data #{params}")
@@ -127,6 +137,6 @@ class WebhookController < ApplicationController
     # 暗号を復号
     decrypted_data = dec.update(encrypted_data) + dec.final
 
-    decrypted_data
+    decrypted_data.force_encoding(Encoding::UTF_8)
   end
 end
