@@ -45,7 +45,7 @@ class WebhookController < ApplicationController
           # JsonBoxから取得し、返すテスト
           # JsonBoxからメッセージ一覧を取得し、最初のメッセージを取り出す
           message_list = jsonbox_load_message
-          decrypted_message = decrypt(message_list.first["message"]).force_encoding(Encoding::UTF_8)
+          decrypted_message = decrypt(Base64.decode64(message_list.first["message"]).chomp).force_encoding(Encoding::UTF_8)
           message = {
             type: 'text',
             text: decrypted_message
@@ -78,17 +78,17 @@ class WebhookController < ApplicationController
     uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    params = { user_id: encrypt(user_id), message: encrypt(message), like: DEFAULT_LIKE_NUM }
+    params = { user_id: Base64.encode64(encrypt(user_id)).chomp, message: Base64.encode64(encrypt(message)).chomp, like: DEFAULT_LIKE_NUM }
     headers = { "Content-Type" => "application/json" }
     http.post(uri.path, params.to_json, headers)
-    logger.info(" [JSONBOX]:Posted Data #{params} , Location:#{JSONBOX_URL}")
+    logger.info(" [JSONBOX]:Posted Data #{params}")
   end
 
   def jsonbox_load_message
     uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     response = Net::HTTP.get_response(uri)
     message_list = JSON.parse(response.body)
-    logger.debug(" [JSONBOX]:Loaded Data #{message_list} , Location:#{JSONBOX_URL}")
+    logger.debug(" [JSONBOX]:Loaded Data #{message_list}")
     message_list
   end
 
@@ -109,13 +109,12 @@ class WebhookController < ApplicationController
 
     # 暗号化 & Base64Encode
     encrypted_data = enc.update(data) + enc.final
-    encrypted_data = Base64.encode64(encrypted_data).chomp
 
     encrypted_data
   end
 
   def decrypt(data)
-    encrypted_data = Base64.decode64(data)
+    encrypted_data = data
     # 復号器を生成
     dec = cipher
     dec.decrypt
