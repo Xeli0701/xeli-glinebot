@@ -44,6 +44,8 @@ class WebhookController < ApplicationController
         
         when Line::Bot::Event::MessageType::Sticker
           # JsonBoxからランダムなメッセージをスタンプを送ったユーザにpushする
+          rand_message = random_message_select
+          p ("Message = #{rand_message[:id]}")
           message = {
             "type": "template",
             "altText": "誰かの日記が届いたようです!",
@@ -54,22 +56,23 @@ class WebhookController < ApplicationController
                 "imageSize": "cover",
                 "imageBackgroundColor": "#FFFFFF",
                 "title": "誰かの日記が届いたようです...",
-                "text": random_message_select,
+                "text": rand_message[:message],
                 "actions": [
                     {
                       "type": "postback",
                       "label": "Like👍",
-                      "data": "action=buy&itemid=123"
+                      "data": rand_message[:id]
                     },
                     {
                       "type": "postback",
                       "label": "Save🗒",
-                      "data": "action=add&itemid=123"
+                      "data": rand_message[:id]
                     }
                 ]
             }
           }
-          client.reply_message(event['replyToken'], message)
+          #client.reply_message(event['replyToken'], message)
+          logger.info(client.reply_message(event['replyToken'], message).body)
         end
       
       when Line::Bot::Event::Follow
@@ -81,6 +84,11 @@ class WebhookController < ApplicationController
         user_id = event['source']['userId']
         User.delete_cache(user_id)
         logger.debug "UserIdList = #{User.get_cache}"
+      
+      #Likeボタンを押された時の処理
+      when Line::Bot::Event::Postback
+        logger.debug event['postback']['data']
+
       end
     }
     head :ok
@@ -90,8 +98,10 @@ class WebhookController < ApplicationController
 
   # Message送信関連
   def random_message_select
-    message_list = jsonbox_load_message
-    decrypt(base64_decode(message_list.sample["message"]))
+    random_diary = jsonbox_load_message.sample
+    params = { id: random_diary['_id'], message: decrypt(base64_decode(random_diary['message'])) }
+    logger.debug("[JSONBOX]:Selected Data #{params}")
+    params
   end
 
   def base64_encode(data)
@@ -116,6 +126,14 @@ class WebhookController < ApplicationController
   end
 
   def jsonbox_load_message
+    uri = URI.parse(ENV.fetch("JSONBOX_URL"))
+    response = Net::HTTP.get_response(uri)
+    message_list = JSON.parse(response.body)
+    #logger.debug(" [JSONBOX]:Loaded Data #{message_list}")
+    message_list
+  end
+
+  def jsonbox_lile_message
     uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     response = Net::HTTP.get_response(uri)
     message_list = JSON.parse(response.body)
