@@ -7,10 +7,6 @@ require 'base64'
 
 class WebhookController < ApplicationController
   protect_from_forgery except: [:callback] # CSRF対策無効化
-  # 環境変数
-  JSONBOX_URL = ENV["JSONBOX_URL"]
-  ENC_PASSWORD = ENV["ENC_PASSWORD"]
-  ENC_SALT = ENV["ENC_SALT"]
 
   def client
     @client ||= Line::Bot::Client.new { |config|
@@ -44,16 +40,11 @@ class WebhookController < ApplicationController
           user_id = event['source']['userId']
           message = event.message['text']
           jsonbox_save_message(user_id,message);
-
-        # when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
-        #   response = client.get_message_content(event.message['id'])
-        #   tf = Tempfile.open("content")
-        #   tf.write(response.body)
         
         when Line::Bot::Event::MessageType::Sticker
           # JsonBoxから取得し、返すテスト
           # JsonBoxからメッセージ一覧を取得し、最初のメッセージを取り出す
-          message_list = jsonbox_load_message()
+          message_list = jsonbox_load_message
           decrypted_message = decrypt(message_list.first["message"]).force_encoding(Encoding::UTF_8)
           message = {
             type: 'text',
@@ -61,7 +52,7 @@ class WebhookController < ApplicationController
           }
           test_user_id = User.get_cache.first # テストとして一番最初のユーザにpushする
           client.push_message(test_user_id, message)
-          logger.debug "Pushed message to #{test_user_id}"
+          logger.debug "Pushed message [#{message}] to #{test_user_id}"
         end
       
       when Line::Bot::Event::Follow
@@ -80,24 +71,31 @@ class WebhookController < ApplicationController
 
   private
 
+  # JsonBoxでの環境変数
+  JSONBOX_URL = ENV.fetch("JSONBOX_URL")
+  DEFAULT_LIKE_NUM = 0
+
   def jsonbox_save_message(user_id,message)
     uri = URI.parse(JSONBOX_URL)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    params = { user_id: encrypt(user_id), message: encrypt(message), like: 0 }
+    params = { user_id: encrypt(user_id), message: encrypt(message), like: DEFAULT_LIKE_NUM }
     headers = { "Content-Type" => "application/json" }
     http.post(uri.path, params.to_json, headers)
     logger.info(" [JSONBOX]:Posted Data #{params} , Location:#{JSONBOX_URL}")
   end
 
-  def jsonbox_load_message()
+  def jsonbox_load_message
     uri = URI.parse(JSONBOX_URL)
     response = Net::HTTP.get_response(uri)
     message_list = JSON.parse((response.body))
-    p "READMESSAGE:#{message_list}"
     logger.debug(" [JSONBOX]:Loaded Data #{message_list} , Location:#{JSONBOX_URL}")
     message_list
   end
+
+  # 暗号・複合での環境変数
+  ENC_PASSWORD = ENV.fetch("ENC_PASSWORD")
+  ENC_SALT = ENV.fetch("ENC_SALT")
 
   def encrypt(data)
     # 暗号機を作る
