@@ -45,10 +45,10 @@ class WebhookController < ApplicationController
           # JsonBoxから取得し、返すテスト
           # JsonBoxからメッセージ一覧を取得し、最初のメッセージを取り出す
           message_list = jsonbox_load_message
-          decrypted_message = decrypt(Base64.decode64(message_list.first["message"]).chomp).force_encoding(Encoding::UTF_8)
+          random_message = random_message_select(message_list)
           message = {
             type: 'text',
-            text: decrypted_message
+            text: random_message
           }
           test_user_id = User.get_cache.first # テストとして一番最初のユーザにpushする
           client.push_message(test_user_id, message)
@@ -70,6 +70,17 @@ class WebhookController < ApplicationController
   end
 
   private
+
+  # Message送信関連
+  def random_message_select(message_list)
+    random_num = Random.rand(message_list.size)
+    random_message = decrypt(base64_decode(message_list[random_num]["message"]))
+    random_message
+  end
+
+  def base64_decode(data)
+    Base64.decode64(data).chomp
+  end
 
   # JsonBox
   DEFAULT_LIKE_NUM = 0
@@ -127,6 +138,6 @@ class WebhookController < ApplicationController
     # 暗号を復号
     decrypted_data = dec.update(encrypted_data) + dec.final
 
-    decrypted_data
+    decrypted_data.force_encoding(Encoding::UTF_8)
   end
 end
