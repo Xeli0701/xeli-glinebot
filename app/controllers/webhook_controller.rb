@@ -1,7 +1,11 @@
 require 'line/bot'
+require 'net/http'
+require 'uri'
 
 class WebhookController < ApplicationController
   protect_from_forgery except: [:callback] # CSRF対策無効化
+  # 環境変数
+  JSONBOX_URL = ENV["JSONBOX_URL"]
 
   def client
     @client ||= Line::Bot::Client.new { |config|
@@ -30,7 +34,13 @@ class WebhookController < ApplicationController
             text: event.message['text']
           }
           client.reply_message(event['replyToken'], message)
-        
+
+          # JsonBoxのテスト(FIXME)
+          user_id = event['source']['userId']
+          message = event.message['text']
+          jsonbox_save_message(user_id,message);
+          logger.debug "saved message of #{user_id}: [#{message}], Location:#{JSONBOX_URL}"
+
         when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
           response = client.get_message_content(event.message['id'])
           tf = Tempfile.open("content")
@@ -58,5 +68,17 @@ class WebhookController < ApplicationController
       end
     }
     head :ok
+  end
+
+  private
+
+  def jsonbox_save_message(user_id,message)
+    uri = URI.parse(JSONBOX_URL)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    params = { user_id: user_id, message: message, like: 0 }
+    headers = { "Content-Type" => "application/json" }
+    http.post(uri.path, params.to_json, headers)
+    logger.info(" Posted #{params}")
   end
 end
