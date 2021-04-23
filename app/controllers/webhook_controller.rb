@@ -45,8 +45,29 @@ class WebhookController < ApplicationController
         when Line::Bot::Event::MessageType::Sticker
           # JsonBoxからランダムなメッセージをスタンプを送ったユーザにpushする
           message = {
-            type: 'text',
-            text: random_message_select
+            "type": "template",
+            "altText": "誰かの日記が届いたようです!",
+            "template": {
+                "type": "buttons",
+                "thumbnailImageUrl": "https://joeschmoe.io/api/v1/person" + Time.new.strftime("%H-%M-%S"),
+                "imageAspectRatio": "rectangle",
+                "imageSize": "cover",
+                "imageBackgroundColor": "#FFFFFF",
+                "title": "誰かの日記が届いたようです...",
+                "text": random_message_select,
+                "actions": [
+                    {
+                      "type": "postback",
+                      "label": "Like👍",
+                      "data": "action=buy&itemid=123"
+                    },
+                    {
+                      "type": "postback",
+                      "label": "Save🗒",
+                      "data": "action=add&itemid=123"
+                    }
+                ]
+            }
           }
           client.reply_message(event['replyToken'], message)
         end
