@@ -97,9 +97,13 @@ class WebhookController < ApplicationController
   ENC_PASSWORD = ENV.fetch("ENC_PASSWORD")
   ENC_SALT = ENV.fetch("ENC_SALT")
 
+  def cipher
+    @cipher ||= OpenSSL::Cipher::AES.new(256, :CBC)
+  end
+
   def encrypt(data)
     # 暗号機を作る
-    enc = OpenSSL::Cipher::AES.new(256, :CBC)
+    enc = cipher
     enc.encrypt
     
     # ENC_PASSWORD,ENC_SALTをもとに鍵・IVを作成・設定
@@ -117,7 +121,7 @@ class WebhookController < ApplicationController
   def decrypt(data)
     encrypted_data = Base64.decode64(data)
     # 復号器を生成
-    dec = OpenSSL::Cipher::AES.new(256, :CBC)
+    dec = cipher
     dec.decrypt
 
     # ENC_PASSWORD,ENC_SALTをもとに鍵・IVを作成・設定
@@ -130,5 +134,4 @@ class WebhookController < ApplicationController
 
     decrypted_data
   end
-
 end
