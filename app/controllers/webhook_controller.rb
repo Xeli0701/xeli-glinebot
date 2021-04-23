@@ -43,19 +43,12 @@ class WebhookController < ApplicationController
           jsonbox_save_message(user_id,message);
         
         when Line::Bot::Event::MessageType::Sticker
-          # JsonBoxからランダムなメッセージをランダムな登録ユーザにpushする
+          # JsonBoxからランダムなメッセージをスタンプを送ったユーザにpushする
           message = {
             type: 'text',
             text: random_message_select
           }
-          user_ids = User.get_cache
-          begin
-            random_user_id = user_ids[Random.rand(user_ids.size)]
-            client.push_message(random_user_id, message)
-            logger.debug "Pushed message [#{message}] to #{random_user_id}"
-          rescue => exception
-            logger.error "[Error!] #{exception} happen; maybe 0 user cache?"
-          end
+          client.reply_message(event['replyToken'], message)
         end
       
       when Line::Bot::Event::Follow
@@ -77,8 +70,7 @@ class WebhookController < ApplicationController
   # Message送信関連
   def random_message_select
     message_list = jsonbox_load_message
-    random_num = Random.rand(message_list.size)
-    random_message = decrypt(base64_decode(message_list[random_num]["message"]))
+    random_message = decrypt(base64_decode(message_list.sample["message"]))
     random_message
   end
 
