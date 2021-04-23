@@ -78,6 +78,10 @@ class WebhookController < ApplicationController
     random_message
   end
 
+  def base64_encode(data)
+    Base64.encode64(data).chomp
+  end
+
   def base64_decode(data)
     Base64.decode64(data).chomp
   end
@@ -89,7 +93,7 @@ class WebhookController < ApplicationController
     uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    params = { user_id: Base64.encode64(encrypt(user_id)).chomp, message: Base64.encode64(encrypt(message)).chomp, like: DEFAULT_LIKE_NUM }
+    params = { user_id: base64_encode(encrypt(user_id)), message: base64_encode(encrypt(message)), like: DEFAULT_LIKE_NUM }
     headers = { "Content-Type" => "application/json" }
     http.post(uri.path, params.to_json, headers)
     logger.info(" [JSONBOX]:Posted Data #{params}")
