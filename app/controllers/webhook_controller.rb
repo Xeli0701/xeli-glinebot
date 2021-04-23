@@ -1,4 +1,9 @@
 require 'line/bot'
+require 'net/http'
+require 'uri'
+require 'json'
+require 'openssl'
+require 'base64'
 
 class WebhookController < ApplicationController
   protect_from_forgery except: [:callback] # CSRF対策無効化
@@ -30,20 +35,24 @@ class WebhookController < ApplicationController
             text: event.message['text']
           }
           client.reply_message(event['replyToken'], message)
-        
-        when Line::Bot::Event::MessageType::Image, Line::Bot::Event::MessageType::Video
-          response = client.get_message_content(event.message['id'])
-          tf = Tempfile.open("content")
-          tf.write(response.body)
+
+          # JsonBoxにテキストを保存する
+          user_id = event['source']['userId']
+          message = event.message['text']
+          jsonbox_save_message(user_id,message);
         
         when Line::Bot::Event::MessageType::Sticker
+          # JsonBoxから取得し、返すテスト
+          # JsonBoxからメッセージ一覧を取得し、最初のメッセージを取り出す
+          message_list = jsonbox_load_message
+          decrypted_message = decrypt(Base64.decode64(message_list.first["message"]).chomp).force_encoding(Encoding::UTF_8)
           message = {
             type: 'text',
-            text: 'HelloWorld!'
+            text: decrypted_message
           }
           test_user_id = User.get_cache.first # テストとして一番最初のユーザにpushする
-          logger.debug "Pushed message to #{test_user_id}"
           client.push_message(test_user_id, message)
+          logger.debug "Pushed message [#{message}] to #{test_user_id}"
         end
       
       when Line::Bot::Event::Follow
@@ -58,5 +67,66 @@ class WebhookController < ApplicationController
       end
     }
     head :ok
+  end
+
+  private
+
+  # JsonBox
+  DEFAULT_LIKE_NUM = 0
+
+  def jsonbox_save_message(user_id,message)
+    uri = URI.parse(ENV.fetch("JSONBOX_URL"))
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    params = { user_id: Base64.encode64(encrypt(user_id)).chomp, message: Base64.encode64(encrypt(message)).chomp, like: DEFAULT_LIKE_NUM }
+    headers = { "Content-Type" => "application/json" }
+    http.post(uri.path, params.to_json, headers)
+    logger.info(" [JSONBOX]:Posted Data #{params}")
+  end
+
+  def jsonbox_load_message
+    uri = URI.parse(ENV.fetch("JSONBOX_URL"))
+    response = Net::HTTP.get_response(uri)
+    message_list = JSON.parse(response.body)
+    logger.debug(" [JSONBOX]:Loaded Data #{message_list}")
+    message_list
+  end
+
+  # 暗号・複合化
+  def cipher
+    @cipher ||= OpenSSL::Cipher::AES.new(256, :CBC)
+  end
+
+  def encrypt(data)
+    # 暗号機を作る
+    enc = cipher
+    enc.encrypt
+    
+    # ENC_PASSWORD,ENC_SALTをもとに鍵・IVを作成・設定
+    key_iv = OpenSSL::PKCS5.pbkdf2_hmac(ENV.fetch("ENC_PASSWORD"), ENV.fetch("ENC_SALT"), 2000, enc.key_len + enc.iv_len, "sha256")
+    enc.key = key_iv[0, enc.key_len]
+    enc.iv = key_iv[enc.key_len, enc.iv_len]
+
+    # 暗号化 & Base64Encode
+    encrypted_data = enc.update(data) + enc.final
+
+    encrypted_data
+  end
+
+  def decrypt(data)
+    encrypted_data = data
+    # 復号器を生成
+    dec = cipher
+    dec.decrypt
+
+    # ENC_PASSWORD,ENC_SALTをもとに鍵・IVを作成・設定
+    key_iv = OpenSSL::PKCS5.pbkdf2_hmac(ENV.fetch("ENC_PASSWORD"), ENV.fetch("ENC_SALT"), 2000, dec.key_len + dec.iv_len, "sha256")
+    dec.key = key_iv[0, dec.key_len]
+    dec.iv = key_iv[dec.key_len, dec.iv_len]
+
+    # 暗号を復号
+    decrypted_data = dec.update(encrypted_data) + dec.final
+
+    decrypted_data
   end
 end
