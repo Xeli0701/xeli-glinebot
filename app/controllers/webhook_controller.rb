@@ -67,7 +67,7 @@ class WebhookController < ApplicationController
 
       when Line::Bot::Event::Unfollow
         user_id = event['source']['userId']
-        #User.delete_cache(user_id)
+        User.delete_cache(user_id)
         logger.debug "UserIdList = #{User.get_cache}"
       end
     }
