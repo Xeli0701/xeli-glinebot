@@ -88,7 +88,7 @@ class WebhookController < ApplicationController
   def jsonbox_load_message
     uri = URI.parse(JSONBOX_URL)
     response = Net::HTTP.get_response(uri)
-    message_list = JSON.parse((response.body))
+    message_list = JSON.parse(response.body)
     logger.debug(" [JSONBOX]:Loaded Data #{message_list} , Location:#{JSONBOX_URL}")
     message_list
   end
