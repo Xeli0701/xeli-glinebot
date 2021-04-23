@@ -44,11 +44,9 @@ class WebhookController < ApplicationController
         
         when Line::Bot::Event::MessageType::Sticker
           # JsonBoxからランダムなメッセージをランダムな登録ユーザにpushする
-          message_list = jsonbox_load_message
-          random_message = random_message_select(message_list)
           message = {
             type: 'text',
-            text: random_message
+            text: random_message_select
           }
           user_ids = User.get_cache
           begin
@@ -77,7 +75,8 @@ class WebhookController < ApplicationController
   private
 
   # Message送信関連
-  def random_message_select(message_list)
+  def random_message_select
+    message_list = jsonbox_load_message
     random_num = Random.rand(message_list.size)
     random_message = decrypt(base64_decode(message_list[random_num]["message"]))
     random_message
