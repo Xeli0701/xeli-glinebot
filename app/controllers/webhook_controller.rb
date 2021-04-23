@@ -70,8 +70,7 @@ class WebhookController < ApplicationController
   # Message送信関連
   def random_message_select
     message_list = jsonbox_load_message
-    random_message = decrypt(base64_decode(message_list.sample["message"]))
-    random_message
+    decrypt(base64_decode(message_list.sample["message"]))
   end
 
   def base64_encode(data)
