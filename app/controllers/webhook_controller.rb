@@ -30,6 +30,7 @@ class WebhookController < ApplicationController
       when Line::Bot::Event::Message
         case event.type
         when Line::Bot::Event::MessageType::Text
+          # ToDo:保存したい時には保存コマンド・呼び出したい時に呼出コマンドを作りたいかも
           message = {
             type: 'text',
             text: event.message['text']
@@ -42,17 +43,21 @@ class WebhookController < ApplicationController
           jsonbox_save_message(user_id,message);
         
         when Line::Bot::Event::MessageType::Sticker
-          # JsonBoxから取得し、返すテスト
-          # JsonBoxからメッセージ一覧を取得し、最初のメッセージを取り出す
+          # JsonBoxからランダムなメッセージをランダムな登録ユーザにpushする
           message_list = jsonbox_load_message
           random_message = random_message_select(message_list)
           message = {
             type: 'text',
             text: random_message
           }
-          test_user_id = User.get_cache.first # テストとして一番最初のユーザにpushする
-          client.push_message(test_user_id, message)
-          logger.debug "Pushed message [#{message}] to #{test_user_id}"
+          user_ids = User.get_cache
+          begin
+            random_user_id = user_ids[Random.rand(user_ids.size)]
+            client.push_message(random_user_id, message)
+            logger.debug "Pushed message [#{message}] to #{random_user_id}"
+          rescue => exception
+            logger.error "[Error!] #{exception} happen; maybe 0 user cache?"
+          end
         end
       
       when Line::Bot::Event::Follow
@@ -62,7 +67,7 @@ class WebhookController < ApplicationController
 
       when Line::Bot::Event::Unfollow
         user_id = event['source']['userId']
-        User.delete_cache(user_id)
+        #User.delete_cache(user_id)
         logger.debug "UserIdList = #{User.get_cache}"
       end
     }
