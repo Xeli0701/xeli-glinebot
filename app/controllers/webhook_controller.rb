@@ -71,12 +71,11 @@ class WebhookController < ApplicationController
 
   private
 
-  # JsonBoxでの環境変数
-  JSONBOX_URL = ENV.fetch("JSONBOX_URL")
+  # JsonBox
   DEFAULT_LIKE_NUM = 0
 
   def jsonbox_save_message(user_id,message)
-    uri = URI.parse(JSONBOX_URL)
+    uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
     params = { user_id: encrypt(user_id), message: encrypt(message), like: DEFAULT_LIKE_NUM }
@@ -86,17 +85,14 @@ class WebhookController < ApplicationController
   end
 
   def jsonbox_load_message
-    uri = URI.parse(JSONBOX_URL)
+    uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     response = Net::HTTP.get_response(uri)
     message_list = JSON.parse(response.body)
     logger.debug(" [JSONBOX]:Loaded Data #{message_list} , Location:#{JSONBOX_URL}")
     message_list
   end
 
-  # 暗号・複合での環境変数
-  ENC_PASSWORD = ENV.fetch("ENC_PASSWORD")
-  ENC_SALT = ENV.fetch("ENC_SALT")
-
+  # 暗号・複合化
   def cipher
     @cipher ||= OpenSSL::Cipher::AES.new(256, :CBC)
   end
@@ -107,7 +103,7 @@ class WebhookController < ApplicationController
     enc.encrypt
     
     # ENC_PASSWORD,ENC_SALTをもとに鍵・IVを作成・設定
-    key_iv = OpenSSL::PKCS5.pbkdf2_hmac(ENC_PASSWORD, ENC_SALT, 2000, enc.key_len + enc.iv_len, "sha256")
+    key_iv = OpenSSL::PKCS5.pbkdf2_hmac(ENV.fetch("ENC_PASSWORD"), ENV.fetch("ENC_SALT"), 2000, enc.key_len + enc.iv_len, "sha256")
     enc.key = key_iv[0, enc.key_len]
     enc.iv = key_iv[enc.key_len, enc.iv_len]
 
@@ -125,7 +121,7 @@ class WebhookController < ApplicationController
     dec.decrypt
 
     # ENC_PASSWORD,ENC_SALTをもとに鍵・IVを作成・設定
-    key_iv = OpenSSL::PKCS5.pbkdf2_hmac(ENC_PASSWORD, ENC_SALT, 2000, dec.key_len + dec.iv_len, "sha256")
+    key_iv = OpenSSL::PKCS5.pbkdf2_hmac(ENV.fetch("ENC_PASSWORD"), ENV.fetch("ENC_SALT"), 2000, dec.key_len + dec.iv_len, "sha256")
     dec.key = key_iv[0, dec.key_len]
     dec.iv = key_iv[dec.key_len, dec.iv_len]
 
