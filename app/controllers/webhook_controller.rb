@@ -81,8 +81,8 @@ class WebhookController < ApplicationController
 
       when Line::Bot::Event::Postback
         #Likeボタンを押された時の処理
-        jsonbox_id = event['postback']['data']
-        liked_message = jsonbox_like_message(jsonbox_id)
+        message_id = event['postback']['data']
+        liked_message = jsonbox_like_message(message_id)
         liked_user_id = decrypt(base64_decode(liked_message["user_id"]))
 
         #Likeされた人に通知
@@ -139,14 +139,15 @@ class WebhookController < ApplicationController
     message_list
   end
 
-  def jsonbox_like_message(jsonbox_id)
+  def jsonbox_like_message(message_id)
     #メッセージロード(Get)
-    uri = URI.parse(ENV.fetch("JSONBOX_URL") + "/" + jsonbox_id)
+    uri = URI.parse("#{ENV.fetch("JSONBOX_URL")}/#{message_id}")
     response = Net::HTTP.get_response(uri)
     liked_message = JSON.parse(response.body)
     like_num = liked_message["like"].to_i + 1
 
     #Likeする（Put/Update）
+    #(JsonboxのPutは上書きなので他プロパティ含めて投げています)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
     params = { user_id: liked_message["user_id"], message: liked_message["message"], like: like_num }
