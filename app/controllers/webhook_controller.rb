@@ -33,7 +33,7 @@ class WebhookController < ApplicationController
           # ToDo:保存したい時には保存コマンド・呼び出したい時に呼出コマンドを作りたいかも
           message = {
             type: 'text',
-            text: "あなたが投稿した日記を保存しました！　対象：#{event.message['text']}"
+            text: "あなたが投稿した日記を保存しました💡\n保存されたつぶやき...\n「#{event.message['text']}」"
           }
           client.reply_message(event['replyToken'], message)
 
@@ -45,7 +45,6 @@ class WebhookController < ApplicationController
         when Line::Bot::Event::MessageType::Sticker
           # JsonBoxからランダムなメッセージをスタンプを送ったユーザにpushする
           rand_message = random_message_select
-          p ("Message = #{rand_message["id"]}")
           message = {
             "type": "template",
             "altText": "誰かの日記が届いたようです!",
