@@ -55,12 +55,12 @@ class WebhookController < ApplicationController
                 "imageSize": "cover",
                 "imageBackgroundColor": "#FFFFFF",
                 "title": "誰かの日記が届いたようです...",
-                "text": rand_message["message"],
+                "text": rand_message[:message],
                 "actions": [
                     {
                       "type": "postback",
                       "label": "Like👍",
-                      "data": rand_message["id"]
+                      "data": rand_message[:id]
                     }
                 ]
             }
@@ -111,7 +111,7 @@ class WebhookController < ApplicationController
   def random_message_select
     #JsonBox上からランダムなメッセージを選択
     random_diary = jsonbox_load_message.sample
-    params = { "id" => random_diary['_id'], "message" => decrypt(base64_decode(random_diary['message'])) }
+    params = { id: random_diary['_id'], message: decrypt(base64_decode(random_diary['message'])) }
     logger.debug("[JSONBOX]:Selected Data #{params}")
     params
   end
