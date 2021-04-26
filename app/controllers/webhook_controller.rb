@@ -200,6 +200,7 @@ class WebhookController < ApplicationController
     decrypted_data = dec.update(encrypted_data) + dec.final
 
     decrypted_data.force_encoding(Encoding::UTF_8)
+  end
 
   def base64_encode(data)
     Base64.encode64(data).chomp
@@ -207,8 +208,5 @@ class WebhookController < ApplicationController
 
   def base64_decode(data)
     Base64.decode64(data).chomp
-  end
-
-
   end
 end
