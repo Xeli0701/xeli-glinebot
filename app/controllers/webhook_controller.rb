@@ -115,6 +115,7 @@ class WebhookController < ApplicationController
 
   # Message選択・送信
   def random_message_select
+    #JsonBox上からランダムなメッセージを選択
     random_diary = jsonbox_load_message.sample
     params = { "id" => random_diary['_id'], "message" => decrypt(base64_decode(random_diary['message'])) }
     logger.debug("[JSONBOX]:Selected Data #{params}")
@@ -125,6 +126,7 @@ class WebhookController < ApplicationController
   DEFAULT_LIKE_NUM = 0
 
   def jsonbox_save_message(user_id,message)
+    #JsonBoxに新しい文章をセーブ
     uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
@@ -135,6 +137,7 @@ class WebhookController < ApplicationController
   end
 
   def jsonbox_load_message
+    #JsonBox上の全文のJsonをロード
     uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     response = Net::HTTP.get_response(uri)
     message_list = JSON.parse(response.body)
@@ -143,20 +146,20 @@ class WebhookController < ApplicationController
   end
 
   def jsonbox_like_message(jsonbox_id)
-    #メッセージロード
+    #メッセージロード(Get)
     uri = URI.parse(ENV.fetch("JSONBOX_URL") + "/" + jsonbox_id)
     response = Net::HTTP.get_response(uri)
     liked_message = JSON.parse(response.body)
     like_num = liked_message["like"].to_i + 1
 
-    #Likeする（Put）
+    #Likeする（Put/Update）
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
     params = { user_id: liked_message["user_id"], message: liked_message["message"], like: like_num }
     headers = { "Content-Type" => "application/json" }
     http.put(uri.path, params.to_json, headers).body
 
-    #返り値はLikeされたメッセージ(json(hash))
+    #返り値はLikeされたメッセージ(hash)
     logger.debug("[JSONBOX]:Liked Data #{liked_message}")
     liked_message
   end
