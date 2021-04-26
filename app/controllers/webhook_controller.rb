@@ -62,11 +62,6 @@ class WebhookController < ApplicationController
                       "type": "postback",
                       "label": "Like👍",
                       "data": rand_message["id"]
-                    },
-                    {
-                      "type": "postback",
-                      "label": "Save🗒",
-                      "data": rand_message["id"]
                     }
                 ]
             }
