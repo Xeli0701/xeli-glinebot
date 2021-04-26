@@ -84,18 +84,18 @@ class WebhookController < ApplicationController
         User.delete_cache(user_id)
         logger.debug "UserIdList = #{User.get_cache}"
       
-      #Likeボタンを押された時の処理
+
       when Line::Bot::Event::Postback
+        #Likeボタンを押された時の処理
         jsonbox_id = event['postback']['data']
         liked_message = jsonbox_like_message(jsonbox_id)
+        liked_user_id = decrypt(base64_decode(liked_message["user_id"]))
 
         #Likeされた人に通知
         message = {
           type: 'text',
           text: "日記がLikeされました！👍"
         }
-        p liked_message["user_id"]
-        liked_user_id = decrypt(base64_decode(liked_message["user_id"]))
         client.push_message(liked_user_id, message)
 
         #Likeした人にメッセージ
@@ -113,20 +113,12 @@ class WebhookController < ApplicationController
 
   private
 
-  # Message送信関連
+  # Message選択・送信
   def random_message_select
     random_diary = jsonbox_load_message.sample
     params = { "id" => random_diary['_id'], "message" => decrypt(base64_decode(random_diary['message'])) }
     logger.debug("[JSONBOX]:Selected Data #{params}")
     params
-  end
-
-  def base64_encode(data)
-    Base64.encode64(data).chomp
-  end
-
-  def base64_decode(data)
-    Base64.decode64(data).chomp
   end
 
   # JsonBox
@@ -165,7 +157,7 @@ class WebhookController < ApplicationController
     http.put(uri.path, params.to_json, headers).body
 
     #返り値はLikeされたメッセージ(json(hash))
-    logger.debug("[JSONBOX]:LIKED Data #{liked_message}")
+    logger.debug("[JSONBOX]:Liked Data #{liked_message}")
     liked_message
   end
 
@@ -205,5 +197,15 @@ class WebhookController < ApplicationController
     decrypted_data = dec.update(encrypted_data) + dec.final
 
     decrypted_data.force_encoding(Encoding::UTF_8)
+
+  def base64_encode(data)
+    Base64.encode64(data).chomp
+  end
+
+  def base64_decode(data)
+    Base64.decode64(data).chomp
+  end
+
+
   end
 end
