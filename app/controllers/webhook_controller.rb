@@ -33,7 +33,7 @@ class WebhookController < ApplicationController
           # ToDo:保存したい時には保存コマンド・呼び出したい時に呼出コマンドを作りたいかも
           message = {
             type: 'text',
-            text: event.message['text']
+            text: "あなたが投稿した日記を保存しました！　対象：#{event.message['text']}"
           }
           client.reply_message(event['replyToken'], message)
 
@@ -45,7 +45,7 @@ class WebhookController < ApplicationController
         when Line::Bot::Event::MessageType::Sticker
           # JsonBoxからランダムなメッセージをスタンプを送ったユーザにpushする
           rand_message = random_message_select
-          p ("Message = #{rand_message[:id]}")
+          p ("Message = #{rand_message["id"]}")
           message = {
             "type": "template",
             "altText": "誰かの日記が届いたようです!",
@@ -56,23 +56,22 @@ class WebhookController < ApplicationController
                 "imageSize": "cover",
                 "imageBackgroundColor": "#FFFFFF",
                 "title": "誰かの日記が届いたようです...",
-                "text": rand_message[:message],
+                "text": rand_message["message"],
                 "actions": [
                     {
                       "type": "postback",
                       "label": "Like👍",
-                      "data": rand_message[:id]
+                      "data": rand_message["id"]
                     },
                     {
                       "type": "postback",
                       "label": "Save🗒",
-                      "data": rand_message[:id]
+                      "data": rand_message["id"]
                     }
                 ]
             }
           }
-          #client.reply_message(event['replyToken'], message)
-          logger.info(client.reply_message(event['replyToken'], message).body)
+          client.reply_message(event['replyToken'], message)
         end
       
       when Line::Bot::Event::Follow
@@ -87,7 +86,25 @@ class WebhookController < ApplicationController
       
       #Likeボタンを押された時の処理
       when Line::Bot::Event::Postback
-        logger.debug event['postback']['data']
+        jsonbox_id = event['postback']['data']
+        liked_message = jsonbox_like_message(jsonbox_id)
+
+        #Likeされた人に通知
+        message = {
+          type: 'text',
+          text: "日記がLikeされました！👍"
+        }
+        p liked_message["user_id"]
+        liked_user_id = decrypt(base64_decode(liked_message["user_id"]))
+        client.push_message(liked_user_id, message)
+
+        #Likeした人にメッセージ
+        message = {
+          type: 'text',
+          text: "日記をLikeしました👍"
+        }
+        client.reply_message(event['replyToken'], message)
+        logger.info "Pushed&Replyed liked Message from #{event['userId']} to #{liked_user_id}"
 
       end
     }
@@ -99,7 +116,7 @@ class WebhookController < ApplicationController
   # Message送信関連
   def random_message_select
     random_diary = jsonbox_load_message.sample
-    params = { id: random_diary['_id'], message: decrypt(base64_decode(random_diary['message'])) }
+    params = { "id" => random_diary['_id'], "message" => decrypt(base64_decode(random_diary['message'])) }
     logger.debug("[JSONBOX]:Selected Data #{params}")
     params
   end
@@ -122,23 +139,34 @@ class WebhookController < ApplicationController
     params = { user_id: base64_encode(encrypt(user_id)), message: base64_encode(encrypt(message)), like: DEFAULT_LIKE_NUM }
     headers = { "Content-Type" => "application/json" }
     http.post(uri.path, params.to_json, headers)
-    logger.info(" [JSONBOX]:Posted Data #{params}")
+    logger.info("[JSONBOX]:Posted Data #{params}")
   end
 
   def jsonbox_load_message
     uri = URI.parse(ENV.fetch("JSONBOX_URL"))
     response = Net::HTTP.get_response(uri)
     message_list = JSON.parse(response.body)
-    #logger.debug(" [JSONBOX]:Loaded Data #{message_list}")
+    logger.debug("[JSONBOX]:Loaded Data #{message_list}")
     message_list
   end
 
-  def jsonbox_lile_message
-    uri = URI.parse(ENV.fetch("JSONBOX_URL"))
+  def jsonbox_like_message(jsonbox_id)
+    #メッセージロード
+    uri = URI.parse(ENV.fetch("JSONBOX_URL") + "/" + jsonbox_id)
     response = Net::HTTP.get_response(uri)
-    message_list = JSON.parse(response.body)
-    logger.debug(" [JSONBOX]:Loaded Data #{message_list}")
-    message_list
+    liked_message = JSON.parse(response.body)
+    like_num = liked_message["like"].to_i + 1
+
+    #Likeする（Put）
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    params = { user_id: liked_message["user_id"], message: liked_message["message"], like: like_num }
+    headers = { "Content-Type" => "application/json" }
+    http.put(uri.path, params.to_json, headers).body
+
+    #返り値はLikeされたメッセージ(json(hash))
+    logger.debug("[JSONBOX]:LIKED Data #{liked_message}")
+    liked_message
   end
 
   # 暗号・複合化
@@ -156,7 +184,7 @@ class WebhookController < ApplicationController
     enc.key = key_iv[0, enc.key_len]
     enc.iv = key_iv[enc.key_len, enc.iv_len]
 
-    # 暗号化 & Base64Encode
+    # 暗号化
     encrypted_data = enc.update(data) + enc.final
 
     encrypted_data
