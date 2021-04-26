@@ -50,7 +50,7 @@ class WebhookController < ApplicationController
             "altText": "誰かの日記が届いたようです!",
             "template": {
                 "type": "buttons",
-                "thumbnailImageUrl": "https://joeschmoe.io/api/v1/person" + Time.new.strftime("%H-%M-%S"),
+                "thumbnailImageUrl": "https://joeschmoe.io/api/v1/random?timestamp=#{Time.new.strftime("%H-%M-%S")}",
                 "imageAspectRatio": "rectangle",
                 "imageSize": "cover",
                 "imageBackgroundColor": "#FFFFFF",
@@ -150,7 +150,7 @@ class WebhookController < ApplicationController
     #(JsonboxのPutは上書きなので他プロパティ含めて投げています)
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    params = { user_id: liked_message["user_id"], message: liked_message["message"], like: like_num }
+    params = liked_message.symbolize_keys.merge(like: like_num)
     headers = { "Content-Type" => "application/json" }
     http.put(uri.path, params.to_json, headers).body
 
